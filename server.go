@@ -3,35 +3,36 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"text/template"
+	"time"
+
+	"database/sql"
+
+	_ "github.com/go-sql-driver/mysql"
 
 	"github.com/gorilla/mux"
 	"golang.org/x/crypto/bcrypt"
 )
 
+type Handler struct {
+	DB   *sql.DB
+	Tmpl *template.Template
+}
+
 var Users []User
 
 type User struct {
+	Id           int
 	Name         string
 	Surname      string
 	Login        string
-	Age          uint
+	Birthday     string
 	City         string
-	Interests    string
+	About        string
 	Email        string
 	PasswordHash string
-}
-
-type signupForm struct {
-	Name      string
-	Surname   string
-	Login     string
-	Age       uint
-	City      string
-	Interests string
-	Email     string
-	Password  string
 }
 
 func UserAuthenticate(email string, password string) User {
@@ -47,29 +48,12 @@ func UserAuthenticate(email string, password string) User {
 	return User{}
 }
 
-func UserRegistrate(data signupForm) (User, error) {
-	passwordHash, _ := bcrypt.GenerateFromPassword([]byte(data.Password), 14)
-	user := User{
-		Name:         data.Name,
-		Surname:      data.Surname,
-		Login:        data.Login,
-		Age:          data.Age,
-		City:         data.City,
-		Interests:    data.Interests,
-		Email:        data.Email,
-		PasswordHash: string(passwordHash),
-	}
-
-	Users = append(Users, user)
-	return user, nil
-}
-
-func handleLogin(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) LoginForm(w http.ResponseWriter, r *http.Request) {
 	tmpl := template.Must(template.ParseFiles("frontend/html/login.html"))
 	tmpl.Execute(w, nil)
 }
 
-func handleLoginPost(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
 	password := r.FormValue("password")
 	user := UserAuthenticate(email, password)
@@ -81,57 +65,75 @@ func handleLoginPost(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleSignup(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) SignupForm(w http.ResponseWriter, r *http.Request) {
 	tmpl := template.Must(template.ParseFiles("frontend/html/signup.html"))
 	tmpl.Execute(w, nil)
 }
 
-func handleSignupPost(w http.ResponseWriter, r *http.Request) {
-	age, _ := strconv.ParseUint(r.FormValue("age"), 10, 32)
-	signupData := signupForm{
-		Name:      r.FormValue("name"),
-		Surname:   r.FormValue("surname"),
-		Login:     r.FormValue("login"),
-		Age:       uint(age),
-		City:      r.FormValue("city"),
-		Interests: r.FormValue("interests"),
-		Email:     r.FormValue("email"),
-		Password:  r.FormValue("password"),
-	}
-	user, err := UserRegistrate(signupData)
+func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
+	passwordHash, _ := bcrypt.GenerateFromPassword([]byte(r.FormValue("password")), 14)
+	result, err := h.DB.Exec(
+		"INSERT INTO users (`name`, `surname`, `birthday`, `city`, `about`, `email`, `password_hash`, `created_at`, `updated_at`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		r.FormValue("name"),
+		r.FormValue("surname"),
+		r.FormValue("birthday"),
+		r.FormValue("city"),
+		r.FormValue("about"),
+		r.FormValue("email"),
+		string(passwordHash),
+		time.Now().Format("2006-01-02 15:04:05"),
+		time.Now().Format("2006-01-02 15:04:05"),
+	)
 	if err != nil {
-		fmt.Fprintln(w, "Can not create user: ", err)
-	} else {
-		tmpl := template.Must(template.ParseFiles("frontend/html/user_page.html"))
-		tmpl.Execute(w, user)
+		panic(err)
 	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		panic(err)
+	}
+	userIDStr := strconv.FormatInt(int64(id), 10)
+	http.Redirect(w, r, "/users/"+userIDStr, http.StatusFound)
 
 }
 
-func handleHome(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "Home page")
 }
 
-func handleUserPage(w http.ResponseWriter, r *http.Request) {
-	userLogin := mux.Vars(r)["user"]
+func (h *Handler) UserPage(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
 
-	for _, u := range Users {
-		if u.Login == userLogin {
-			tmpl := template.Must(template.ParseFiles("frontend/html/user_page.html"))
-			tmpl.Execute(w, u)
-		}
+	fmt.Fprintln(w, "User page ID: "+id)
+}
+
+func dbConn() (db *sql.DB) {
+	dbDriver := "mysql"
+	dbUser := os.Getenv("DB_MYSQL_USER")
+	dbPass := os.Getenv("DB_MYSQL_PASSWORD")
+	dbName := "social_dev"
+	db, err := sql.Open(dbDriver, dbUser+":"+dbPass+"@/"+dbName)
+	if err != nil {
+		panic(err.Error())
 	}
-	fmt.Fprintln(w, "Can not find user with login: ", userLogin)
+	return db
 }
 
 func main() {
+	db := dbConn()
+
+	handlers := &Handler{
+		DB:   db,
+		Tmpl: template.Must(template.ParseGlob("frontend/html/*")),
+	}
+
 	mux := mux.NewRouter()
-	mux.HandleFunc("/login", handleLogin).Methods("GET")
-	mux.HandleFunc("/login", handleLoginPost).Methods("POST")
-	mux.HandleFunc("/signup", handleSignup).Methods("GET")
-	mux.HandleFunc("/signup", handleSignupPost).Methods("POST")
-	mux.HandleFunc("/{user}", handleUserPage)
-	mux.HandleFunc("/", handleHome)
+	mux.HandleFunc("/login", handlers.LoginForm).Methods("GET")
+	mux.HandleFunc("/login", handlers.Login).Methods("POST")
+	mux.HandleFunc("/signup", handlers.SignupForm).Methods("GET")
+	mux.HandleFunc("/signup", handlers.Signup).Methods("POST")
+	mux.HandleFunc("/users/{id}", handlers.UserPage)
+	mux.HandleFunc("/", handlers.Home)
 	server := &http.Server{
 		Addr:    ":8080",
 		Handler: mux,
