@@ -49,7 +49,7 @@ func UserAuthenticate(email string, password string) User {
 }
 
 func (h *Handler) LoginForm(w http.ResponseWriter, r *http.Request) {
-	tmpl := template.Must(template.ParseFiles("frontend/html/login.html"))
+	tmpl := template.Must(template.ParseFiles("frontend/templates/login.html"))
 	tmpl.Execute(w, nil)
 }
 
@@ -60,13 +60,13 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	if (User{}) == user {
 		fmt.Fprintln(w, "Invalid email or password!")
 	} else {
-		tmpl := template.Must(template.ParseFiles("frontend/html/user_page.html"))
+		tmpl := template.Must(template.ParseFiles("frontend/templates/user_page.html"))
 		tmpl.Execute(w, user)
 	}
 }
 
 func (h *Handler) SignupForm(w http.ResponseWriter, r *http.Request) {
-	tmpl := template.Must(template.ParseFiles("frontend/html/signup.html"))
+	tmpl := template.Must(template.ParseFiles("frontend/templates/signup.html", "frontend/templates/layouts/base.html"))
 	tmpl.Execute(w, nil)
 }
 
@@ -124,7 +124,7 @@ func main() {
 
 	handlers := &Handler{
 		DB:   db,
-		Tmpl: template.Must(template.ParseGlob("frontend/html/*")),
+		Tmpl: template.Must(template.ParseGlob("frontend/templates/*/*")),
 	}
 
 	mux := mux.NewRouter()
@@ -134,6 +134,10 @@ func main() {
 	mux.HandleFunc("/signup", handlers.Signup).Methods("POST")
 	mux.HandleFunc("/users/{id}", handlers.UserPage)
 	mux.HandleFunc("/", handlers.Home)
+
+	assetsHandler := http.StripPrefix("/data/", http.FileServer(http.Dir("frontend/assets")))
+	mux.PathPrefix("/data/").Handler(assetsHandler)
+
 	server := &http.Server{
 		Addr:    ":8080",
 		Handler: mux,
