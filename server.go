@@ -27,7 +27,6 @@ type User struct {
 	Id           int
 	Name         string
 	Surname      string
-	Login        string
 	Birthday     string
 	City         string
 	About        string
@@ -102,9 +101,18 @@ func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) UserPage(w http.ResponseWriter, r *http.Request) {
-	id := mux.Vars(r)["id"]
+	id, _ := strconv.Atoi(mux.Vars(r)["id"])
 
-	fmt.Fprintln(w, "User page ID: "+id)
+	user := &User{}
+	row := h.DB.QueryRow("SELECT id, name, surname, birthday, city, about, email FROM users WHERE id = ?", id)
+
+	err := row.Scan(&user.Id, &user.Name, &user.Surname, &user.Birthday, &user.City, &user.About, &user.Email)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	tmpl := template.Must(template.ParseFiles("frontend/templates/user_page.html", "frontend/templates/layouts/base.html"))
+	tmpl.Execute(w, user)
 }
 
 func dbConn() (db *sql.DB) {

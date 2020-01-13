@@ -1,6 +1,10 @@
+{{define "content"}}
 <p>Name: {{.Name}} </p>
 <p>Surname: {{.Surname}} </p>
 <p>Email: {{.Email}} </p>
-<p>Age: {{.Age}} </p>
+<p>Birthday: {{.Birthday}} </p>
 <p>City: {{.City}} </p>
 <p>About: {{.About}} </p>
+{{end}}
+
+{{template "base.html" . }}
