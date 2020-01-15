@@ -34,19 +34,6 @@ type User struct {
 	PasswordHash string
 }
 
-func UserAuthenticate(email string, password string) User {
-	for _, u := range Users {
-		if u.Email == email {
-			err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(password))
-			if err != nil {
-				return User{}
-			}
-			return u
-		}
-	}
-	return User{}
-}
-
 func (h *Handler) LoginForm(w http.ResponseWriter, r *http.Request) {
 	tmpl := template.Must(template.ParseFiles("frontend/templates/login.html"))
 	tmpl.Execute(w, nil)
@@ -55,13 +42,17 @@ func (h *Handler) LoginForm(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
 	password := r.FormValue("password")
-	user := UserAuthenticate(email, password)
-	if (User{}) == user {
-		fmt.Fprintln(w, "Invalid email or password!")
-	} else {
-		tmpl := template.Must(template.ParseFiles("frontend/templates/user_page.html"))
-		tmpl.Execute(w, user)
+	user := &User{}
+	row := h.DB.QueryRow("SELECT id, email, password_hash FROM users WHERE email = ?", email)
+	row.Scan(&user.Id, &user.Email, &user.PasswordHash)
+
+	err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
+	if err != nil {
+		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 	}
+
+	userIDStr := strconv.FormatInt(int64(user.Id), 10)
+	http.Redirect(w, r, "/users/"+userIDStr, http.StatusFound)
 }
 
 func (h *Handler) SignupForm(w http.ResponseWriter, r *http.Request) {
