@@ -13,6 +13,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/sessions"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -22,6 +23,11 @@ type Handler struct {
 }
 
 var Users []User
+
+var (
+	key          = []byte(os.Getenv("SESSIONS_KEY"))
+	sessionStore = sessions.NewCookieStore(key)
+)
 
 type User struct {
 	Id           int
@@ -50,6 +56,10 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 	}
+
+	session, _ := sessionStore.Get(r, "social_app")
+	session.Values["userID"] = user.Id
+	session.Save(r, w)
 
 	userIDStr := strconv.FormatInt(int64(user.Id), 10)
 	http.Redirect(w, r, "/users/"+userIDStr, http.StatusFound)
@@ -106,6 +116,20 @@ func (h *Handler) UserPage(w http.ResponseWriter, r *http.Request) {
 	tmpl.Execute(w, user)
 }
 
+func authMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("Authentication check ...")
+		session, _ := sessionStore.Get(r, "social_app")
+		userID, ok := session.Values["userID"].(int)
+		if !ok || userID == 0 {
+			http.Redirect(w, r, "/login", http.StatusFound)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func dbConn() (db *sql.DB) {
 	dbDriver := "mysql"
 	dbUser := os.Getenv("DB_MYSQL_USER")
@@ -126,20 +150,25 @@ func main() {
 		Tmpl: template.Must(template.ParseGlob("frontend/templates/*/*")),
 	}
 
-	mux := mux.NewRouter()
-	mux.HandleFunc("/login", handlers.LoginForm).Methods("GET")
-	mux.HandleFunc("/login", handlers.Login).Methods("POST")
-	mux.HandleFunc("/signup", handlers.SignupForm).Methods("GET")
-	mux.HandleFunc("/signup", handlers.Signup).Methods("POST")
-	mux.HandleFunc("/users/{id}", handlers.UserPage)
-	mux.HandleFunc("/", handlers.Home)
+	siteMux := mux.NewRouter().PathPrefix("/").Subrouter()
+	siteMux.HandleFunc("/login", handlers.LoginForm).Methods("GET")
+	siteMux.HandleFunc("/login", handlers.Login).Methods("POST")
+	siteMux.HandleFunc("/signup", handlers.SignupForm).Methods("GET")
+	siteMux.HandleFunc("/signup", handlers.Signup).Methods("POST")
+
+	siteMux.HandleFunc("/", handlers.Home)
+
+	userMux := mux.NewRouter()
+	userMux.HandleFunc("/users/{id}", handlers.UserPage)
+	userHandler := authMiddleware(userMux)
+	siteMux.Handle("/users/{id}", userHandler)
 
 	assetsHandler := http.StripPrefix("/data/", http.FileServer(http.Dir("frontend/assets")))
-	mux.PathPrefix("/data/").Handler(assetsHandler)
+	siteMux.PathPrefix("/data/").Handler(assetsHandler)
 
 	server := &http.Server{
 		Addr:    ":8080",
-		Handler: mux,
+		Handler: siteMux,
 	}
 
 	fmt.Println("Server is listening ...")
