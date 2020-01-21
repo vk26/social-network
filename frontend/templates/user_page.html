@@ -1,10 +1,8 @@
-{{define "content"}}
+{{template "layout_base.html"}}
+
 <p>Name: {{.Name}} </p>
 <p>Surname: {{.Surname}} </p>
 <p>Email: {{.Email}} </p>
 <p>Birthday: {{.Birthday}} </p>
 <p>City: {{.City}} </p>
 <p>About: {{.About}} </p>
-{{end}}
-
-{{template "base.html" . }}

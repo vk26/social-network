@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
+	"html/template"
 	"net/http"
 	"os"
 	"strconv"
-	"text/template"
 	"time"
 
 	"database/sql"
@@ -41,8 +41,11 @@ type User struct {
 }
 
 func (h *Handler) LoginForm(w http.ResponseWriter, r *http.Request) {
-	tmpl := template.Must(template.ParseFiles("frontend/templates/login.html"))
-	tmpl.Execute(w, nil)
+	err := h.Tmpl.ExecuteTemplate(w, "login.html", nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
@@ -66,8 +69,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) SignupForm(w http.ResponseWriter, r *http.Request) {
-	tmpl := template.Must(template.ParseFiles("frontend/templates/signup.html", "frontend/templates/layouts/base.html"))
-	tmpl.Execute(w, nil)
+	h.Tmpl.ExecuteTemplate(w, "signup.html", nil)
 }
 
 func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
@@ -112,8 +114,7 @@ func (h *Handler) UserPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	tmpl := template.Must(template.ParseFiles("frontend/templates/user_page.html", "frontend/templates/layouts/base.html"))
-	tmpl.Execute(w, user)
+	h.Tmpl.ExecuteTemplate(w, "user_page.html", user)
 }
 
 func authMiddleware(next http.Handler) http.Handler {
@@ -147,7 +148,7 @@ func main() {
 
 	handlers := &Handler{
 		DB:   db,
-		Tmpl: template.Must(template.ParseGlob("frontend/templates/*/*")),
+		Tmpl: template.Must(template.ParseGlob("frontend/templates/*")),
 	}
 
 	siteMux := mux.NewRouter().PathPrefix("/").Subrouter()
@@ -171,7 +172,7 @@ func main() {
 		Handler: siteMux,
 	}
 
-	fmt.Println("Server is listening ...")
+	fmt.Println("Server is listening port 8080 ...")
 	err := server.ListenAndServe()
 	if err != nil {
 		panic(err)
