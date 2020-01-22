@@ -40,6 +40,14 @@ type User struct {
 	PasswordHash string
 }
 
+func init() {
+	sessionStore.Options = &sessions.Options{
+		Path:     "/",
+		MaxAge:   3600 * 24 * 15, // 15 days
+		HttpOnly: true,
+	}
+}
+
 func (h *Handler) LoginForm(w http.ResponseWriter, r *http.Request) {
 	err := h.Tmpl.ExecuteTemplate(w, "login.html", nil)
 	if err != nil {
@@ -94,6 +102,11 @@ func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
+
+	session, _ := sessionStore.Get(r, "social_app")
+	session.Values["userID"] = int(id)
+	session.Save(r, w)
+
 	userIDStr := strconv.FormatInt(int64(id), 10)
 	http.Redirect(w, r, "/users/"+userIDStr, http.StatusFound)
 
@@ -157,12 +170,10 @@ func main() {
 	siteMux.HandleFunc("/signup", handlers.SignupForm).Methods("GET")
 	siteMux.HandleFunc("/signup", handlers.Signup).Methods("POST")
 
-	siteMux.HandleFunc("/", handlers.Home)
-
-	userMux := mux.NewRouter()
+	userMux := siteMux.PathPrefix("/").Subrouter()
+	userMux.HandleFunc("/", handlers.Home)
 	userMux.HandleFunc("/users/{id}", handlers.UserPage)
-	userHandler := authMiddleware(userMux)
-	siteMux.Handle("/users/{id}", userHandler)
+	userMux.Use(authMiddleware)
 
 	assetsHandler := http.StripPrefix("/data/", http.FileServer(http.Dir("frontend/assets")))
 	siteMux.PathPrefix("/data/").Handler(assetsHandler)
