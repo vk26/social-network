@@ -61,7 +61,8 @@ func main() {
 		os.Getenv("SOCIAL_APP_MYSQL_DSN"),
 	)
 
-	a.Run(":8080")
+	fmt.Println("App is listening port 8080 ...")
+	a.Run("0.0.0.0:8080")
 }
 
 func (a *App) Initialize(dbDriver, dsn string) {
