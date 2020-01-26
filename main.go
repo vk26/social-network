@@ -73,6 +73,7 @@ func (a *App) initializeRoutes() {
 	siteMux := mux.NewRouter().PathPrefix("/").Subrouter()
 	siteMux.HandleFunc("/login", a.LoginForm).Methods("GET")
 	siteMux.HandleFunc("/login", a.Login).Methods("POST")
+	siteMux.HandleFunc("/logout", a.Logout).Methods("GET")
 	siteMux.HandleFunc("/signup", a.SignupForm).Methods("GET")
 	siteMux.HandleFunc("/signup", a.Signup).Methods("POST")
 
@@ -113,6 +114,14 @@ func (a *App) Login(w http.ResponseWriter, r *http.Request) {
 
 	userIDStr := strconv.FormatInt(int64(user.Id), 10)
 	http.Redirect(w, r, "/users/"+userIDStr, http.StatusFound)
+}
+
+func (a *App) Logout(w http.ResponseWriter, r *http.Request) {
+	session, _ := sessionStore.Get(r, "social_app")
+	session.Values["userID"] = nil
+	session.Save(r, w)
+
+	http.Redirect(w, r, "/login", http.StatusFound)
 }
 
 func (a *App) SignupForm(w http.ResponseWriter, r *http.Request) {
