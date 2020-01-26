@@ -90,6 +90,7 @@ func (a *App) initializeRoutes() {
 	siteRouter.HandleFunc("/signup", a.SignupForm).Methods("GET")
 	siteRouter.HandleFunc("/signup", a.Signup).Methods("POST")
 	siteRouter.HandleFunc("/users", a.UsersList).Methods("GET")
+	siteRouter.HandleFunc("/", a.Home).Methods("GET")
 
 	authRouter := siteRouter.PathPrefix("/").Subrouter()
 	authRouter.HandleFunc("/users/{id:[0-9]+}", a.UserPage).Methods("GET")
@@ -168,7 +169,7 @@ func (a *App) Signup(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) Home(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "Home page")
+	http.Redirect(w, r, "/users", http.StatusFound)
 }
 
 func (a *App) UserPage(w http.ResponseWriter, r *http.Request) {
