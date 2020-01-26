@@ -77,8 +77,8 @@ func (a *App) initializeRoutes() {
 	siteMux.HandleFunc("/signup", a.Signup).Methods("POST")
 
 	userMux := siteMux.PathPrefix("/").Subrouter()
-	userMux.HandleFunc("/", a.Home)
-	userMux.HandleFunc("/users/{id}", a.UserPage)
+	userMux.HandleFunc("/users", a.UsersList).Methods("GET")
+	userMux.HandleFunc("/users/{id:[0-9]+}", a.UserPage).Methods("GET")
 	userMux.Use(a.authMiddleware)
 
 	siteMux.Use(a.getCurrentUserMiddleware)
@@ -163,6 +163,27 @@ func (a *App) UserPage(w http.ResponseWriter, r *http.Request) {
 		"currentUser": context.Get(r, currentUserKey),
 	}
 	a.Tmpl.ExecuteTemplate(w, "user_page.html", data)
+}
+
+func (a *App) UsersList(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	page, _ := strconv.Atoi(params["page"])
+	count, _ := strconv.Atoi(params["count"])
+	if count == 0 {
+		count = 15
+	}
+	start := page * count
+	users, err := models.GetUsers(a.DB, start, count)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	data := map[string]interface{}{
+		"users":       users,
+		"currentUser": context.Get(r, currentUserKey),
+	}
+	a.Tmpl.ExecuteTemplate(w, "users_list.html", data)
 }
 
 func (a *App) authMiddleware(next http.Handler) http.Handler {

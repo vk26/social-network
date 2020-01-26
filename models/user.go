@@ -51,3 +51,27 @@ func (u *User) CreateUser(db *sql.DB) error {
 	u.Id = int(id)
 	return err
 }
+
+func GetUsers(db *sql.DB, start, count int) ([]User, error) {
+	rows, err := db.Query(
+		"SELECT id, name, surname, birthday, city, about, email FROM users LIMIT ? OFFSET ?",
+		count, start)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	users := []User{}
+
+	for rows.Next() {
+		var u User
+		if err := rows.Scan(&u.Id, &u.Name, &u.Surname, &u.Birthday, &u.City, &u.About, &u.Email); err != nil {
+			return nil, err
+		}
+		users = append(users, u)
+	}
+
+	return users, nil
+}
