@@ -12,6 +12,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 
+	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"golang.org/x/crypto/bcrypt"
@@ -22,11 +23,15 @@ type Handler struct {
 	Tmpl *template.Template
 }
 
-var Users []User
-
 var (
-	key          = []byte(os.Getenv("SESSIONS_KEY"))
-	sessionStore = sessions.NewCookieStore(key)
+	sessionKey   = []byte(os.Getenv("SESSIONS_KEY"))
+	sessionStore = sessions.NewCookieStore(sessionKey)
+)
+
+type ctxKey string
+
+const (
+	currentUserKey ctxKey = "currentUserKey"
 )
 
 type User struct {
@@ -127,7 +132,12 @@ func (h *Handler) UserPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	h.Tmpl.ExecuteTemplate(w, "user_page.html", user)
+
+	data := map[string]interface{}{
+		"user":        user,
+		"currentUser": context.Get(r, currentUserKey),
+	}
+	h.Tmpl.ExecuteTemplate(w, "user_page.html", data)
 }
 
 func authMiddleware(next http.Handler) http.Handler {
@@ -140,6 +150,26 @@ func authMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
+		next.ServeHTTP(w, r)
+	})
+}
+
+func getCurrentUserMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("Getting current user ...")
+		session, _ := sessionStore.Get(r, "social_app")
+		userID, ok := session.Values["userID"].(int)
+		if ok && userID != 0 {
+			user := &User{}
+			db := dbConn()
+			row := db.QueryRow("SELECT id, name, surname, birthday, city, about, email FROM users WHERE id = ?", userID)
+
+			err := row.Scan(&user.Id, &user.Name, &user.Surname, &user.Birthday, &user.City, &user.About, &user.Email)
+			if err == nil {
+				context.Set(r, currentUserKey, user)
+			}
+		}
+		fmt.Println(context.Get(r, currentUserKey))
 		next.ServeHTTP(w, r)
 	})
 }
@@ -174,6 +204,8 @@ func main() {
 	userMux.HandleFunc("/", handlers.Home)
 	userMux.HandleFunc("/users/{id}", handlers.UserPage)
 	userMux.Use(authMiddleware)
+
+	siteMux.Use(getCurrentUserMiddleware)
 
 	assetsHandler := http.StripPrefix("/data/", http.FileServer(http.Dir("frontend/assets")))
 	siteMux.PathPrefix("/data/").Handler(assetsHandler)

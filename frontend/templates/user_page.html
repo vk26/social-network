@@ -1,9 +1,9 @@
 {{template "layout_base.html"}}
-{{template "header.html"}}
+{{template "header.html" .}}
 
-<p>Name: {{.Name}} </p>
-<p>Surname: {{.Surname}} </p>
-<p>Email: {{.Email}} </p>
-<p>Birthday: {{.Birthday}} </p>
-<p>City: {{.City}} </p>
-<p>About: {{.About}} </p>
+<p>Name: {{.user.Name}} </p>
+<p>Surname: {{.user.Surname}} </p>
+<p>Email: {{.user.Email}} </p>
+<p>Birthday: {{.user.Birthday}} </p>
+<p>City: {{.user.City}} </p>
+<p>About: {{.user.About}} </p>
