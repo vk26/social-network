@@ -7,8 +7,9 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"social-network/models"
 	"strconv"
+
+	"github.com/vk26/social-network/models"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/context"
