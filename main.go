@@ -1,26 +1,26 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"os"
+	"social-network/models"
 	"strconv"
-	"time"
-
-	"database/sql"
 
 	_ "github.com/go-sql-driver/mysql"
-
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
 	"golang.org/x/crypto/bcrypt"
 )
 
-type Handler struct {
-	DB   *sql.DB
-	Tmpl *template.Template
+type App struct {
+	Router *mux.Router
+	DB     *sql.DB
+	Tmpl   *template.Template
 }
 
 var (
@@ -53,21 +53,55 @@ func init() {
 	}
 }
 
-func (h *Handler) LoginForm(w http.ResponseWriter, r *http.Request) {
-	err := h.Tmpl.ExecuteTemplate(w, "login.html", nil)
+func (a *App) Initialize(dbDriver, dbUser, dbPassword, dbName string) {
+	var err error
+	a.DB, err = sql.Open(dbDriver, dbUser+":"+dbPassword+"@/"+dbName)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	a.Router = mux.NewRouter()
+	a.Tmpl = template.Must(template.ParseGlob("frontend/templates/*"))
+	a.initializeRoutes()
+}
+
+func (a *App) Run(addr string) {
+	log.Fatal(http.ListenAndServe(addr, a.Router))
+}
+
+func (a *App) initializeRoutes() {
+	siteMux := mux.NewRouter().PathPrefix("/").Subrouter()
+	siteMux.HandleFunc("/login", a.LoginForm).Methods("GET")
+	siteMux.HandleFunc("/login", a.Login).Methods("POST")
+	siteMux.HandleFunc("/signup", a.SignupForm).Methods("GET")
+	siteMux.HandleFunc("/signup", a.Signup).Methods("POST")
+
+	userMux := siteMux.PathPrefix("/").Subrouter()
+	userMux.HandleFunc("/", a.Home)
+	userMux.HandleFunc("/users/{id}", a.UserPage)
+	userMux.Use(a.authMiddleware)
+
+	siteMux.Use(a.getCurrentUserMiddleware)
+
+	assetsHandler := http.StripPrefix("/data/", http.FileServer(http.Dir("frontend/assets")))
+	siteMux.PathPrefix("/data/").Handler(assetsHandler)
+
+	a.Router = siteMux
+}
+
+func (a *App) LoginForm(w http.ResponseWriter, r *http.Request) {
+	err := a.Tmpl.ExecuteTemplate(w, "login.html", nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
 
-func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
+func (a *App) Login(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
 	password := r.FormValue("password")
-	user := &User{}
-	row := h.DB.QueryRow("SELECT id, email, password_hash FROM users WHERE email = ?", email)
-	row.Scan(&user.Id, &user.Email, &user.PasswordHash)
-
+	user := models.User{Email: email}
+	user.GetUserByEmail(a.DB)
 	err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
 	if err != nil {
 		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
@@ -81,53 +115,44 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/users/"+userIDStr, http.StatusFound)
 }
 
-func (h *Handler) SignupForm(w http.ResponseWriter, r *http.Request) {
-	h.Tmpl.ExecuteTemplate(w, "signup.html", nil)
+func (a *App) SignupForm(w http.ResponseWriter, r *http.Request) {
+	a.Tmpl.ExecuteTemplate(w, "signup.html", nil)
 }
 
-func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
+func (a *App) Signup(w http.ResponseWriter, r *http.Request) {
 	passwordHash, _ := bcrypt.GenerateFromPassword([]byte(r.FormValue("password")), 14)
-	result, err := h.DB.Exec(
-		"INSERT INTO users (`name`, `surname`, `birthday`, `city`, `about`, `email`, `password_hash`, `created_at`, `updated_at`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		r.FormValue("name"),
-		r.FormValue("surname"),
-		r.FormValue("birthday"),
-		r.FormValue("city"),
-		r.FormValue("about"),
-		r.FormValue("email"),
-		string(passwordHash),
-		time.Now().Format("2006-01-02 15:04:05"),
-		time.Now().Format("2006-01-02 15:04:05"),
-	)
-	if err != nil {
-		panic(err)
+	user := models.User{
+		Name:         r.FormValue("name"),
+		Surname:      r.FormValue("surname"),
+		Birthday:     r.FormValue("birthday"),
+		City:         r.FormValue("city"),
+		About:        r.FormValue("about"),
+		Email:        r.FormValue("email"),
+		PasswordHash: string(passwordHash),
 	}
-
-	id, err := result.LastInsertId()
+	err := user.CreateUser(a.DB)
 	if err != nil {
-		panic(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	session, _ := sessionStore.Get(r, "social_app")
-	session.Values["userID"] = int(id)
+	session.Values["userID"] = int(user.Id)
 	session.Save(r, w)
 
-	userIDStr := strconv.FormatInt(int64(id), 10)
+	userIDStr := strconv.FormatInt(int64(user.Id), 10)
 	http.Redirect(w, r, "/users/"+userIDStr, http.StatusFound)
 
 }
 
-func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
+func (a *App) Home(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "Home page")
 }
 
-func (h *Handler) UserPage(w http.ResponseWriter, r *http.Request) {
+func (a *App) UserPage(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.Atoi(mux.Vars(r)["id"])
-
-	user := &User{}
-	row := h.DB.QueryRow("SELECT id, name, surname, birthday, city, about, email FROM users WHERE id = ?", id)
-
-	err := row.Scan(&user.Id, &user.Name, &user.Surname, &user.Birthday, &user.City, &user.About, &user.Email)
+	user := models.User{Id: id}
+	err := user.GetUserByID(a.DB)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -137,10 +162,10 @@ func (h *Handler) UserPage(w http.ResponseWriter, r *http.Request) {
 		"user":        user,
 		"currentUser": context.Get(r, currentUserKey),
 	}
-	h.Tmpl.ExecuteTemplate(w, "user_page.html", data)
+	a.Tmpl.ExecuteTemplate(w, "user_page.html", data)
 }
 
-func authMiddleware(next http.Handler) http.Handler {
+func (a *App) authMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Authentication check ...")
 		session, _ := sessionStore.Get(r, "social_app")
@@ -154,17 +179,14 @@ func authMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func getCurrentUserMiddleware(next http.Handler) http.Handler {
+func (a *App) getCurrentUserMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Getting current user ...")
 		session, _ := sessionStore.Get(r, "social_app")
 		userID, ok := session.Values["userID"].(int)
 		if ok && userID != 0 {
-			user := &User{}
-			db := dbConn()
-			row := db.QueryRow("SELECT id, name, surname, birthday, city, about, email FROM users WHERE id = ?", userID)
-
-			err := row.Scan(&user.Id, &user.Name, &user.Surname, &user.Birthday, &user.City, &user.About, &user.Email)
+			user := models.User{Id: userID}
+			err := user.GetUserByID(a.DB)
 			if err == nil {
 				context.Set(r, currentUserKey, user)
 			}
@@ -174,50 +196,14 @@ func getCurrentUserMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func dbConn() (db *sql.DB) {
-	dbDriver := "mysql"
-	dbUser := os.Getenv("DB_MYSQL_USER")
-	dbPass := os.Getenv("DB_MYSQL_PASSWORD")
-	dbName := "social_dev"
-	db, err := sql.Open(dbDriver, dbUser+":"+dbPass+"@/"+dbName)
-	if err != nil {
-		panic(err.Error())
-	}
-	return db
-}
-
 func main() {
-	db := dbConn()
+	a := App{}
+	a.Initialize(
+		"mysql",
+		os.Getenv("DB_MYSQL_USER"),
+		os.Getenv("DB_MYSQL_PASSWORD"),
+		"social_dev",
+	)
 
-	handlers := &Handler{
-		DB:   db,
-		Tmpl: template.Must(template.ParseGlob("frontend/templates/*")),
-	}
-
-	siteMux := mux.NewRouter().PathPrefix("/").Subrouter()
-	siteMux.HandleFunc("/login", handlers.LoginForm).Methods("GET")
-	siteMux.HandleFunc("/login", handlers.Login).Methods("POST")
-	siteMux.HandleFunc("/signup", handlers.SignupForm).Methods("GET")
-	siteMux.HandleFunc("/signup", handlers.Signup).Methods("POST")
-
-	userMux := siteMux.PathPrefix("/").Subrouter()
-	userMux.HandleFunc("/", handlers.Home)
-	userMux.HandleFunc("/users/{id}", handlers.UserPage)
-	userMux.Use(authMiddleware)
-
-	siteMux.Use(getCurrentUserMiddleware)
-
-	assetsHandler := http.StripPrefix("/data/", http.FileServer(http.Dir("frontend/assets")))
-	siteMux.PathPrefix("/data/").Handler(assetsHandler)
-
-	server := &http.Server{
-		Addr:    ":8080",
-		Handler: siteMux,
-	}
-
-	fmt.Println("Server is listening port 8080 ...")
-	err := server.ListenAndServe()
-	if err != nil {
-		panic(err)
-	}
+	a.Run(":8080")
 }
