@@ -62,7 +62,7 @@ func main() {
 	)
 	port := os.Getenv("SOCIAL_APP_PORT")
 	fmt.Println("App is listening port ", port)
-	a.Run("0.0.0.0:" + port)
+	a.Run(":" + port)
 }
 
 func (a *App) Initialize(dbDriver, dsn string) {
