@@ -53,6 +53,18 @@ func init() {
 	}
 }
 
+func main() {
+	a := App{}
+	a.Initialize(
+		"mysql",
+		os.Getenv("DB_MYSQL_USER"),
+		os.Getenv("DB_MYSQL_PASSWORD"),
+		"social_dev",
+	)
+
+	a.Run(":8080")
+}
+
 func (a *App) Initialize(dbDriver, dbUser, dbPassword, dbName string) {
 	var err error
 	a.DB, err = sql.Open(dbDriver, dbUser+":"+dbPassword+"@/"+dbName)
@@ -70,24 +82,24 @@ func (a *App) Run(addr string) {
 }
 
 func (a *App) initializeRoutes() {
-	siteMux := mux.NewRouter().PathPrefix("/").Subrouter()
-	siteMux.HandleFunc("/login", a.LoginForm).Methods("GET")
-	siteMux.HandleFunc("/login", a.Login).Methods("POST")
-	siteMux.HandleFunc("/logout", a.Logout).Methods("GET")
-	siteMux.HandleFunc("/signup", a.SignupForm).Methods("GET")
-	siteMux.HandleFunc("/signup", a.Signup).Methods("POST")
+	siteRouter := mux.NewRouter().PathPrefix("/").Subrouter()
+	siteRouter.HandleFunc("/login", a.LoginForm).Methods("GET")
+	siteRouter.HandleFunc("/login", a.Login).Methods("POST")
+	siteRouter.HandleFunc("/logout", a.Logout).Methods("GET")
+	siteRouter.HandleFunc("/signup", a.SignupForm).Methods("GET")
+	siteRouter.HandleFunc("/signup", a.Signup).Methods("POST")
+	siteRouter.HandleFunc("/users", a.UsersList).Methods("GET")
 
-	userMux := siteMux.PathPrefix("/").Subrouter()
-	userMux.HandleFunc("/users", a.UsersList).Methods("GET")
-	userMux.HandleFunc("/users/{id:[0-9]+}", a.UserPage).Methods("GET")
-	userMux.Use(a.authMiddleware)
+	authRouter := siteRouter.PathPrefix("/").Subrouter()
+	authRouter.HandleFunc("/users/{id:[0-9]+}", a.UserPage).Methods("GET")
+	authRouter.Use(a.authMiddleware)
 
-	siteMux.Use(a.getCurrentUserMiddleware)
+	siteRouter.Use(a.getCurrentUserMiddleware)
 
 	assetsHandler := http.StripPrefix("/data/", http.FileServer(http.Dir("frontend/assets")))
-	siteMux.PathPrefix("/data/").Handler(assetsHandler)
+	siteRouter.PathPrefix("/data/").Handler(assetsHandler)
 
-	a.Router = siteMux
+	a.Router = siteRouter
 }
 
 func (a *App) LoginForm(w http.ResponseWriter, r *http.Request) {
@@ -224,16 +236,4 @@ func (a *App) getCurrentUserMiddleware(next http.Handler) http.Handler {
 		fmt.Println(context.Get(r, currentUserKey))
 		next.ServeHTTP(w, r)
 	})
-}
-
-func main() {
-	a := App{}
-	a.Initialize(
-		"mysql",
-		os.Getenv("DB_MYSQL_USER"),
-		os.Getenv("DB_MYSQL_PASSWORD"),
-		"social_dev",
-	)
-
-	a.Run(":8080")
 }
