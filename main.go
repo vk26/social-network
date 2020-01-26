@@ -60,7 +60,7 @@ func main() {
 		"mysql",
 		os.Getenv("SOCIAL_APP_MYSQL_DSN"),
 	)
-	port := os.Getenv("SOCIAL_APP_PORT")
+	port := os.Getenv("PORT")
 	fmt.Println("App is listening port ", port)
 	a.Run(":" + port)
 }
