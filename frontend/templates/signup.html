@@ -1,0 +1,47 @@
+{{template "layout_base.html" . }}
+{{template "header.html"}}
+
+<section id="cover" class="min-vh-100">
+  <div id="cover-caption">
+    <div class="container">
+      <div class="row text-white">
+        <div class="col-xl-5 col-lg-6 col-md-8 col-sm-10 mx-auto text-center form p-4">
+          <h1 class="display-4 py-2 text-truncate">Sign up</h1>
+          <div class="px-2">
+            <form method="POST" class="justify-content-center">
+              <div class="form-group">
+                <label class="sr-only">Name:</label>
+                <input type="text" name="name" class="form-control" placeholder="Name">
+              </div>
+              <div class="form-group">
+                <label class="sr-only">Surname:</label>
+                <input type="text" name="surname" class="form-control" placeholder="Surname">
+              </div>
+              <div class="form-group">
+                <label class="sr-only">City:</label>
+                <input type="text" name="city" class="form-control" placeholder="City">
+              </div>
+              <div class="form-group">
+                <label class="sr-only">Birthday:</label>
+                <input type="date" name="birthday" class="form-control">
+              </div>
+              <div class="form-group">
+                <label class="sr-only">About:</label>
+                <input type="text" name="about" class="form-control" placeholder="About you">
+              </div>
+              <div class="form-group">
+                <label class="sr-only">Email:</label>
+                <input type="text" name="email" class="form-control" placeholder="jane.doe@example.com">
+              </div>
+              <div class="form-group">
+                <label class="sr-only">Password:</label>
+                <input type="password" name="password" class="form-control" placeholder="password">
+              </div>
+              <button type="submit" class="btn btn-primary btn-lg">Registrate</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div> 
+  </div>
+</div>       
