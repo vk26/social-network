@@ -7,8 +7,9 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"social-network/models"
 	"strconv"
+
+	"github.com/vk26/social-network/models"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/context"
@@ -24,7 +25,7 @@ type App struct {
 }
 
 var (
-	sessionKey   = []byte(os.Getenv("SESSIONS_KEY"))
+	sessionKey   = []byte(os.Getenv("SOCIAL_APP_SESSIONS_KEY"))
 	sessionStore = sessions.NewCookieStore(sessionKey)
 )
 
@@ -57,17 +58,17 @@ func main() {
 	a := App{}
 	a.Initialize(
 		"mysql",
-		os.Getenv("DB_MYSQL_USER"),
-		os.Getenv("DB_MYSQL_PASSWORD"),
-		"social_dev",
+		os.Getenv("SOCIAL_APP_MYSQL_DSN"),
 	)
-
-	a.Run(":8080")
+	port := os.Getenv("PORT")
+	fmt.Println("App is listening port ", port)
+	a.Run(":" + port)
 }
 
-func (a *App) Initialize(dbDriver, dbUser, dbPassword, dbName string) {
+func (a *App) Initialize(dbDriver, dsn string) {
 	var err error
-	a.DB, err = sql.Open(dbDriver, dbUser+":"+dbPassword+"@/"+dbName)
+
+	a.DB, err = sql.Open(dbDriver, dsn)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -89,6 +90,7 @@ func (a *App) initializeRoutes() {
 	siteRouter.HandleFunc("/signup", a.SignupForm).Methods("GET")
 	siteRouter.HandleFunc("/signup", a.Signup).Methods("POST")
 	siteRouter.HandleFunc("/users", a.UsersList).Methods("GET")
+	siteRouter.HandleFunc("/", a.Home).Methods("GET")
 
 	authRouter := siteRouter.PathPrefix("/").Subrouter()
 	authRouter.HandleFunc("/users/{id:[0-9]+}", a.UserPage).Methods("GET")
@@ -167,7 +169,7 @@ func (a *App) Signup(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) Home(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "Home page")
+	http.Redirect(w, r, "/users", http.StatusFound)
 }
 
 func (a *App) UserPage(w http.ResponseWriter, r *http.Request) {
