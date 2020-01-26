@@ -25,7 +25,7 @@ type App struct {
 }
 
 var (
-	sessionKey   = []byte(os.Getenv("SESSIONS_KEY"))
+	sessionKey   = []byte(os.Getenv("SOCIAL_APP_SESSIONS_KEY"))
 	sessionStore = sessions.NewCookieStore(sessionKey)
 )
 
@@ -58,17 +58,16 @@ func main() {
 	a := App{}
 	a.Initialize(
 		"mysql",
-		os.Getenv("DB_MYSQL_USER"),
-		os.Getenv("DB_MYSQL_PASSWORD"),
-		"social_dev",
+		os.Getenv("SOCIAL_APP_MYSQL_DSN"),
 	)
 
 	a.Run(":8080")
 }
 
-func (a *App) Initialize(dbDriver, dbUser, dbPassword, dbName string) {
+func (a *App) Initialize(dbDriver, dsn string) {
 	var err error
-	a.DB, err = sql.Open(dbDriver, dbUser+":"+dbPassword+"@/"+dbName)
+
+	a.DB, err = sql.Open(dbDriver, dsn)
 	if err != nil {
 		log.Fatal(err)
 	}
