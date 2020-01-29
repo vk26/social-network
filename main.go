@@ -93,6 +93,7 @@ func (a *App) initializeRoutes() {
 	siteRouter.HandleFunc("/", a.Home).Methods("GET")
 
 	authRouter := siteRouter.PathPrefix("/").Subrouter()
+	authRouter.HandleFunc("/users/search", a.UsersSearch).Queries("name_substr", "{name_substr}").Methods("GET")
 	authRouter.HandleFunc("/users/{id:[0-9]+}", a.UserPage).Methods("GET")
 	authRouter.Use(a.authMiddleware)
 
@@ -202,6 +203,20 @@ func (a *App) UsersList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	data := map[string]interface{}{
+		"users":       users,
+		"currentUser": context.Get(r, currentUserKey),
+	}
+	a.Tmpl.ExecuteTemplate(w, "users_list.html", data)
+}
+
+func (a *App) UsersSearch(w http.ResponseWriter, r *http.Request) {
+	nameSubstr := r.FormValue("name_substr")
+	users, err := models.SearchUsers(a.DB, nameSubstr)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	data := map[string]interface{}{
 		"users":       users,
 		"currentUser": context.Get(r, currentUserKey),
