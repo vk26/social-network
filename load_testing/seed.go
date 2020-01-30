@@ -30,12 +30,13 @@ func main() {
 		records := []string{}
 		recordsRaw := ""
 		for i := 0; i < batchSize; i++ {
-			record := fmt.Sprintf("('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')",
+			record := fmt.Sprintf("('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')",
 				escapeSingleQuotes(faker.Name().FirstName()),
 				escapeSingleQuotes(faker.Name().LastName()),
 				faker.Date().Birthday(18, 60).Format("2006-01-02"),
 				escapeSingleQuotes(faker.Address().City()),
 				strings.Join(faker.Lorem().Words(3)[:], ", "),
+				faker.Avatar().String(),
 				faker.Internet().SafeEmail(),
 				"$2a$14$xSWEm06Ro.735D/cNTKHE.VcQ1pB5lgEPFmNJItz.yi5nGO8Z0bse",
 				time.Now().Format("2006-01-02 15:04:05"),
@@ -44,7 +45,7 @@ func main() {
 			records = append(records, record)
 		}
 		recordsRaw = strings.Join(records[:], ",")
-		sqlRaw := "INSERT INTO users (`name`, `surname`, `birthday`, `city`, `about`, `email`, `password_hash`, `created_at`, `updated_at`) VALUES "
+		sqlRaw := "INSERT INTO users (`name`, `surname`, `birthday`, `city`, `about`, `avatar`, `email`, `password_hash`, `created_at`, `updated_at`) VALUES "
 		sqlRaw += recordsRaw
 		_, err := db.Exec(sqlRaw)
 		if err != nil {

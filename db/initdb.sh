@@ -11,6 +11,7 @@ mysql -u "${DB_MYSQL_USER}" --password="${DB_MYSQL_PASSWORD}" <<-EOSQL
 			birthday DATE,
 			city TEXT,
 			about TEXT,
+      avatar TEXT, 
 			email TEXT NOT NULL,
 			password_hash TEXT NOT NULL,
 			created_at DATETIME,
