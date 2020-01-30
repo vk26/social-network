@@ -8,4 +8,5 @@ require (
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/sessions v1.2.0
 	golang.org/x/crypto v0.0.0-20200117160349-530e935923ad
+	syreclabs.com/go/faker v1.2.0
 )
