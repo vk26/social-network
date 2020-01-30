@@ -90,10 +90,10 @@ func (a *App) initializeRoutes() {
 	siteRouter.HandleFunc("/signup", a.SignupForm).Methods("GET")
 	siteRouter.HandleFunc("/signup", a.Signup).Methods("POST")
 	siteRouter.HandleFunc("/users", a.UsersList).Methods("GET")
+	siteRouter.HandleFunc("/users/search", a.UsersSearch).Queries("name_substr", "{name_substr}").Methods("GET")
 	siteRouter.HandleFunc("/", a.Home).Methods("GET")
 
 	authRouter := siteRouter.PathPrefix("/").Subrouter()
-	authRouter.HandleFunc("/users/search", a.UsersSearch).Queries("name_substr", "{name_substr}").Methods("GET")
 	authRouter.HandleFunc("/users/{id:[0-9]+}", a.UserPage).Methods("GET")
 	authRouter.Use(a.authMiddleware)
 
@@ -197,7 +197,7 @@ func (a *App) UsersList(w http.ResponseWriter, r *http.Request) {
 		count = 15
 	}
 	start := page * count
-	users, err := models.GetUsers(a.DB, start, count)
+	users, err := models.GetUsers(a.DB, count, start)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -212,7 +212,13 @@ func (a *App) UsersList(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) UsersSearch(w http.ResponseWriter, r *http.Request) {
 	nameSubstr := r.FormValue("name_substr")
-	users, err := models.SearchUsers(a.DB, nameSubstr)
+	page, _ := strconv.Atoi(r.FormValue("page"))
+	count, _ := strconv.Atoi(r.FormValue("count"))
+	if count == 0 {
+		count = 15
+	}
+	start := page * count
+	users, err := models.SearchUsers(a.DB, nameSubstr, count, start)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

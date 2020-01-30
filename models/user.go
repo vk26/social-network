@@ -52,7 +52,7 @@ func (u *User) CreateUser(db *sql.DB) error {
 	return err
 }
 
-func GetUsers(db *sql.DB, start, count int) ([]User, error) {
+func GetUsers(db *sql.DB, count, start int) ([]User, error) {
 	rows, err := db.Query(
 		"SELECT id, name, surname, birthday, city, about, email FROM users LIMIT ? OFFSET ?",
 		count, start)
@@ -76,12 +76,11 @@ func GetUsers(db *sql.DB, start, count int) ([]User, error) {
 	return users, nil
 }
 
-func SearchUsers(db *sql.DB, nameSubstr string) ([]User, error) {
+func SearchUsers(db *sql.DB, nameSubstr string, count, start int) ([]User, error) {
 	wildcardSubstr := nameSubstr + "%"
 	rows, err := db.Query(
-		"SELECT id, name, surname, birthday, city, about, email FROM users WHERE name LIKE ? OR surname LIKE ?",
-		wildcardSubstr, wildcardSubstr)
-
+		"SELECT id, name, surname, birthday, city, about, email FROM users WHERE name LIKE ? OR surname LIKE ? LIMIT ? OFFSET ?",
+		wildcardSubstr, wildcardSubstr, count, start)
 	if err != nil {
 		return nil, err
 	}
