@@ -35,17 +35,6 @@ const (
 	currentUserKey ctxKey = "currentUserKey"
 )
 
-type User struct {
-	Id           int
-	Name         string
-	Surname      string
-	Birthday     string
-	City         string
-	About        string
-	Email        string
-	PasswordHash string
-}
-
 func init() {
 	sessionStore.Options = &sessions.Options{
 		Path:     "/",
