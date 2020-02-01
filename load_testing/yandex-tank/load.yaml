@@ -1,0 +1,27 @@
+overload:
+  enabled: true
+  package: yandextank.plugins.DataUploader
+  token_file: "overload_token.txt"
+  job_name: social-network
+  job_dsc: Testing search users with indexes DB and without
+phantom:
+  address: 127.0.0.1:8080 # [Target's address]:[target's port]
+  uris:
+    - /users/search?name_substr=jo
+    - /users/search?name_substr=ab
+    - /users/search?name_substr=cd
+    - /users/search?name_substr=ef
+    - /users/search?name_substr=qwe
+    - /users/search?name_substr=ca
+    - /users/search?name_substr=qw
+    - /users/search?name_substr=we
+    - /users/search?name_substr=er
+    - /users/search?name_substr=rt
+    - /users
+  load_profile:
+    load_type: rps # schedule load by defining requests per second
+    schedule: line(10, 1000, 30s) # starting from 1rps growing linearly to 10rps during 10 minutes
+console:
+  enabled: true # enable console output
+telegraf:
+  enabled: false # let's disable telegraf monitoring for the first time
