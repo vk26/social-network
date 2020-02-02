@@ -1,5 +1,7 @@
-**Without indexes**
-```sql EXPLAIN FORMAT=json Select * from users WHERE name LIKE 'jo%' OR surname LIKE 'jo%';```
+#Without indexes
+```sql 
+EXPLAIN FORMAT=json Select * from users WHERE name LIKE 'jo%' OR surname LIKE 'jo%';
+```
 ```json
 {
   "query_block": {
@@ -58,7 +60,7 @@ DB.SetMaxOpenConns(900)
 DB.SetMaxIdleConns(100)
 srv.ReadTimeout:  time.Second * 15
 
-**With BTREE indexes**
+#With BTREE indexes
 Try add index BTREE for name, surname fields. And watch explain again. We use btree because it support LIKE clauses.
 ```sql
 CREATE INDEX name_idx ON users(name(15));
@@ -111,7 +113,7 @@ EXPLAIN FORMAT=json Select * from users WHERE name LIKE 'jo%' OR surname LIKE 'j
 Load testing with BTREE by yandex-tank:
 https://clck.ru/M8Ec9
 
-**With FULLTEXT indexes**
+#With FULLTEXT indexes
 And let's try to use FULLTEXT index.
 ```sql
 drop index name_idx on users;
@@ -171,7 +173,8 @@ EXPLAIN FORMAT=JSON Select * from users WHERE MATCH(name, surname) AGAINST ('+jo
   }
 }
 ```
-Wow! We increase search query perform rapidly! FULLTEXT index query_cost: 1.20 agianst BTREE query_cost: 122099.48.
+We increase search query perform rapidly! FULLTEXT index query_cost: 1.20 agianst BTREE query_cost: 122099.48.
+
 Load testing with FULLTEXT indexes:
 https://clck.ru/M8FBi
 
