@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/vk26/social-network/models"
 
@@ -35,17 +36,6 @@ const (
 	currentUserKey ctxKey = "currentUserKey"
 )
 
-type User struct {
-	Id           int
-	Name         string
-	Surname      string
-	Birthday     string
-	City         string
-	About        string
-	Email        string
-	PasswordHash string
-}
-
 func init() {
 	sessionStore.Options = &sessions.Options{
 		Path:     "/",
@@ -69,6 +59,10 @@ func (a *App) Initialize(dbDriver, dsn string) {
 	var err error
 
 	a.DB, err = sql.Open(dbDriver, dsn)
+	a.DB.SetMaxOpenConns(900)
+	a.DB.SetMaxIdleConns(100)
+	a.DB.SetConnMaxLifetime(time.Minute * 2)
+
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -79,7 +73,13 @@ func (a *App) Initialize(dbDriver, dsn string) {
 }
 
 func (a *App) Run(addr string) {
-	log.Fatal(http.ListenAndServe(addr, a.Router))
+	srv := &http.Server{
+		Addr:         addr,
+		Handler:      a.Router,
+		ReadTimeout:  time.Second * 15,
+		WriteTimeout: time.Second * 5,
+	}
+	log.Fatal(srv.ListenAndServe())
 }
 
 func (a *App) initializeRoutes() {
@@ -90,6 +90,7 @@ func (a *App) initializeRoutes() {
 	siteRouter.HandleFunc("/signup", a.SignupForm).Methods("GET")
 	siteRouter.HandleFunc("/signup", a.Signup).Methods("POST")
 	siteRouter.HandleFunc("/users", a.UsersList).Methods("GET")
+	siteRouter.HandleFunc("/users/search", a.UsersSearch).Queries("name_substr", "{name_substr}").Methods("GET")
 	siteRouter.HandleFunc("/", a.Home).Methods("GET")
 
 	authRouter := siteRouter.PathPrefix("/").Subrouter()
@@ -196,12 +197,33 @@ func (a *App) UsersList(w http.ResponseWriter, r *http.Request) {
 		count = 15
 	}
 	start := page * count
-	users, err := models.GetUsers(a.DB, start, count)
+	users, err := models.GetUsers(a.DB, count, start)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	data := map[string]interface{}{
+		"users":       users,
+		"currentUser": context.Get(r, currentUserKey),
+	}
+	a.Tmpl.ExecuteTemplate(w, "users_list.html", data)
+}
+
+func (a *App) UsersSearch(w http.ResponseWriter, r *http.Request) {
+	nameSubstr := r.FormValue("name_substr")
+	page, _ := strconv.Atoi(r.FormValue("page"))
+	count, _ := strconv.Atoi(r.FormValue("count"))
+	if count == 0 {
+		count = 15
+	}
+	start := page * count
+	users, err := models.SearchUsers(a.DB, nameSubstr, count, start)
+	if err != nil {
+		log.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	data := map[string]interface{}{
 		"users":       users,
 		"currentUser": context.Get(r, currentUserKey),
@@ -225,7 +247,6 @@ func (a *App) authMiddleware(next http.Handler) http.Handler {
 
 func (a *App) getCurrentUserMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("Getting current user ...")
 		session, _ := sessionStore.Get(r, "social_app")
 		userID, ok := session.Values["userID"].(int)
 		if ok && userID != 0 {
@@ -235,7 +256,6 @@ func (a *App) getCurrentUserMiddleware(next http.Handler) http.Handler {
 				context.Set(r, currentUserKey, user)
 			}
 		}
-		fmt.Println(context.Get(r, currentUserKey))
 		next.ServeHTTP(w, r)
 	})
 }
