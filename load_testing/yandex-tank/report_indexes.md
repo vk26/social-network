@@ -42,8 +42,9 @@ EXPLAIN FORMAT=json Select * from users WHERE name LIKE 'jo%' OR surname LIKE 'j
 Load testing result by yandex-tank:
 https://clck.ru/M8F4c
 
-I faced with problem "too many files open" and "too many connections"
+I faced with problem "too many files open" and "too many connections".
 I did this tuning:
+
 In Mysql side set:
 ```bash
 max_connections = 1000
