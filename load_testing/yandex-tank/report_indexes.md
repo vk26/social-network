@@ -1,4 +1,4 @@
-#Without indexes
+# Without indexes
 ```sql 
 EXPLAIN FORMAT=json Select * from users WHERE name LIKE 'jo%' OR surname LIKE 'jo%';
 ```
@@ -45,8 +45,10 @@ https://clck.ru/M8F4c
 I faced with problem "too many files open" and "too many connections"
 I did this tuning:
 In Mysql side set:
+```bash
 max_connections = 1000
 open_files_limit = 65000
+```
 In OS Linux:
 change /etc/security/limits.conf
 ```bash
@@ -56,11 +58,13 @@ change /etc/security/limits.conf
 * hard     nofile         65535
 ```
 In application side:
+```go
 DB.SetMaxOpenConns(900)
 DB.SetMaxIdleConns(100)
 srv.ReadTimeout:  time.Second * 15
+```
 
-#With BTREE indexes
+# With BTREE indexes
 Try add index BTREE for name, surname fields. And watch explain again. We use btree because it support LIKE clauses.
 ```sql
 CREATE INDEX name_idx ON users(name(15));
@@ -113,7 +117,7 @@ EXPLAIN FORMAT=json Select * from users WHERE name LIKE 'jo%' OR surname LIKE 'j
 Load testing with BTREE by yandex-tank:
 https://clck.ru/M8Ec9
 
-#With FULLTEXT indexes
+# With FULLTEXT indexes
 And let's try to use FULLTEXT index.
 ```sql
 drop index name_idx on users;
