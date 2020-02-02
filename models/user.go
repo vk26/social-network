@@ -81,10 +81,10 @@ func GetUsers(db *sql.DB, count, start int) ([]User, error) {
 }
 
 func SearchUsers(db *sql.DB, nameSubstr string, count, start int) ([]User, error) {
-	wildcardSubstr := nameSubstr + "%"
+	wildcardSubstr := "+" + nameSubstr + "*"
 	rows, err := db.Query(
-		"SELECT id, name, surname, birthday, city, about, avatar, email FROM users WHERE name LIKE ? OR surname LIKE ? LIMIT ? OFFSET ?",
-		wildcardSubstr, wildcardSubstr, count, start)
+		"SELECT id, name, surname, birthday, city, about, avatar, email FROM users WHERE MATCH(name, surname) AGAINST (? IN BOOLEAN MODE) LIMIT ? OFFSET ?",
+		wildcardSubstr, count, start)
 	if err != nil {
 		return nil, err
 	}
