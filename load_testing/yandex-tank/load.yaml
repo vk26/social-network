@@ -5,7 +5,7 @@ overload:
   job_name: social-network
   job_dsc: Testing search users with indexes DB and without
 phantom:
-  address: 127.0.0.1:8080 # [Target's address]:[target's port]
+  address: 127.0.0.1:8080
   uris:
     - /users/search?name_substr=jo
     - /users/search?name_substr=ab
@@ -17,10 +17,10 @@ phantom:
     - /users/search?name_substr=we
     - /users/search?name_substr=er
     - /users/search?name_substr=rt
-    - /users
+    # - /users
   load_profile:
     load_type: rps # schedule load by defining requests per second
-    schedule: line(10, 1000, 30s) # starting from 1rps growing linearly to 10rps during 10 minutes
+    schedule: line(10, 1000, 30s) # starting from 10rps growing linearly to 1000rps during 30 seconds
 console:
   enabled: true # enable console output
 telegraf:

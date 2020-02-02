@@ -5,7 +5,7 @@ mysql -u "${DB_MYSQL_USER}" --password="${DB_MYSQL_PASSWORD}" <<-EOSQL
   DROP TABLE IF EXISTS users;
 
   CREATE TABLE users (
-			id INT AUTO_INCREMENT,
+			id INT NOT NULL PRIMARY KEY,
 			name TEXT NOT NULL,
 			surname TEXT NOT NULL,
 			birthday DATE,
@@ -16,6 +16,8 @@ mysql -u "${DB_MYSQL_USER}" --password="${DB_MYSQL_PASSWORD}" <<-EOSQL
 			password_hash TEXT NOT NULL,
 			created_at DATETIME,
       updated_at DATETIME,
-			PRIMARY KEY (id)
 	) ENGINE INNODB;
+
+  CREATE INDEX name_idx ON users(name(15));
+  CREATE INDEX surname_idx ON users(surname(15));
 EOSQL

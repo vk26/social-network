@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/vk26/social-network/models"
 
@@ -58,6 +59,10 @@ func (a *App) Initialize(dbDriver, dsn string) {
 	var err error
 
 	a.DB, err = sql.Open(dbDriver, dsn)
+	a.DB.SetMaxOpenConns(900)
+	a.DB.SetMaxIdleConns(100)
+	a.DB.SetConnMaxLifetime(time.Minute * 2)
+
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -68,7 +73,13 @@ func (a *App) Initialize(dbDriver, dsn string) {
 }
 
 func (a *App) Run(addr string) {
-	log.Fatal(http.ListenAndServe(addr, a.Router))
+	srv := &http.Server{
+		Addr:         addr,
+		Handler:      a.Router,
+		ReadTimeout:  time.Second * 15,
+		WriteTimeout: time.Second * 5,
+	}
+	log.Fatal(srv.ListenAndServe())
 }
 
 func (a *App) initializeRoutes() {
@@ -209,6 +220,7 @@ func (a *App) UsersSearch(w http.ResponseWriter, r *http.Request) {
 	start := page * count
 	users, err := models.SearchUsers(a.DB, nameSubstr, count, start)
 	if err != nil {
+		log.Println(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -235,7 +247,6 @@ func (a *App) authMiddleware(next http.Handler) http.Handler {
 
 func (a *App) getCurrentUserMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("Getting current user ...")
 		session, _ := sessionStore.Get(r, "social_app")
 		userID, ok := session.Values["userID"].(int)
 		if ok && userID != 0 {
@@ -245,7 +256,6 @@ func (a *App) getCurrentUserMiddleware(next http.Handler) http.Handler {
 				context.Set(r, currentUserKey, user)
 			}
 		}
-		fmt.Println(context.Get(r, currentUserKey))
 		next.ServeHTTP(w, r)
 	})
 }
