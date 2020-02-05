@@ -1,0 +1,18 @@
+version: '3'
+services:
+  mysql_master:
+    image: mysql:8.0
+    container_name: social_network-mysql_master
+    ports: 
+      - 4406:3306
+    volumes: 
+      - mysql_master:/var/lib/mysql  
+    environment: 
+      MYSQL_DATABASE: social_dev
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_PASSWORD: password
+volumes:
+  mysql_master:
+
+
+
