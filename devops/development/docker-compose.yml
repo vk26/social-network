@@ -1,0 +1,33 @@
+version: '3'
+services:
+  mysql_master:
+    build: ./mysql_master
+    container_name: mysql_master
+    env_file: ./mysql_master/master.env
+    volumes:
+      - ./mysql_master/cnf/my.cnf:/etc/mysql/my.cnf
+      - mysql_master_data:/var/lib/mysql
+    ports:
+      - 4406:3306
+    networks: 
+      - app_network  
+  mysql_slave1:
+    build: ./mysql_slave1
+    container_name: mysql_slave1
+    ports: 
+      - 5506:3306
+    env_file: ./mysql_slave1/slave.env
+    volumes: 
+      - ./mysql_slave1/cnf/my.cnf:/etc/mysql/my.cnf
+      - mysql_slave1:/var/lib/mysql  
+    networks: 
+      - app_network
+volumes:
+  mysql_master_data:
+  mysql_slave1:
+networks:
+  app_network:
+
+
+
+

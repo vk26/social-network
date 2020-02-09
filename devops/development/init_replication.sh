@@ -1,0 +1,2 @@
+query='GRANT REPLICATION SLAVE ON *.* TO "mydb_slave_user"@"%" IDENTIFIED BY "mydb_slave_pwd"; FLUSH PRIVILEGES; SHOW DATABASES;'
+docker-compose exec mysql_master sh -c "export MYSQL_PWD=password; mysql -u root -e '$query'"
