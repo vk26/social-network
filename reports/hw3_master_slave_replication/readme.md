@@ -23,6 +23,7 @@ binlog_do_db = social_dev
 ```sql
 CREATE USER 'mysql_slave_user'@'%' IDENTIFIED WITH mysql_native_password BY 'password';
 GRANT REPLICATION SLAVE ON *.* TO 'mysql_slave_user'@'%';
+FLUSH PRIVILEGES;
 ```
 
 Find out position of replication:
@@ -51,7 +52,7 @@ mysql -u root -p
 ```
 Setup replication:
 ```sql
-CHANGE MASTER TO MASTER_HOST='172.30.0.3', MASTER_USER='mysql_slave_user', MASTER_PASSWORD='password', MASTER_LOG_FILE='mysql-bin.000001', MASTER_LOG_POS=3912;
+CHANGE MASTER TO MASTER_HOST='192.168.64.2', MASTER_USER='mysql_slave_user', MASTER_PASSWORD='password', MASTER_LOG_FILE='mysql-bin.000003', MASTER_LOG_POS=849;
 ```
 Start repilcation:
 ```sql
