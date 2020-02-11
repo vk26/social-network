@@ -181,5 +181,6 @@ EXPLAIN FORMAT=JSON Select * from users WHERE MATCH(name, surname) AGAINST ('+jo
 We increase search query perform rapidly! FULLTEXT index query_cost: 1.20 agianst BTREE query_cost: 122099.48.
 
 Load testing with FULLTEXT indexes:
+
 https://clck.ru/M8FBi
 
