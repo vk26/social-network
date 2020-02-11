@@ -1,4 +1,4 @@
-mysql -u "${DB_MYSQL_USER}" --password="${DB_MYSQL_PASSWORD}" <<-EOSQL
+query="
   CREATE DATABASE IF NOT EXISTS social_dev;
   USE social_dev;
   
@@ -19,4 +19,5 @@ mysql -u "${DB_MYSQL_USER}" --password="${DB_MYSQL_PASSWORD}" <<-EOSQL
 	) ENGINE INNODB;
 
 	CREATE FULLTEXT INDEX fulltext_name_idx ON users(name, surname);
-EOSQL
+"
+docker exec -it mysql_master sh -c "mysql -u root -p -e '$query'"
