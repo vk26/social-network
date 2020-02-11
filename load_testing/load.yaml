@@ -7,6 +7,14 @@ overload:
 phantom:
   address: 127.0.0.1:8080
   uris:
+    - /users
+    - /users/1111
+    - /users/2222
+    - /users/3333
+    - /users/4444
+    - /users/5555
+    - /users/6666
+    - /users/7777
     - /users/search?name_substr=jo
     - /users/search?name_substr=ab
     - /users/search?name_substr=cd
@@ -17,10 +25,11 @@ phantom:
     - /users/search?name_substr=we
     - /users/search?name_substr=er
     - /users/search?name_substr=rt
-    # - /users
   load_profile:
     load_type: rps # schedule load by defining requests per second
     schedule: line(10, 1000, 30s) # starting from 10rps growing linearly to 1000rps during 30 seconds
+  headers: 
+    - "[Cookie: social_app=MTU4MTQyMjE5MXxEdi1CQkFFQ180SUFBUkFCRUFBQUlQLUNBQUVHYzNSeWFXNW5EQWdBQm5WelpYSkpSQU5wYm5RRUJRRDlIb1NXfGt7S0c9wL7o7KE-8AwRg75NUkoO-FPW8ofrcy2J6Nnm]"
 console:
   enabled: true # enable console output
 telegraf:

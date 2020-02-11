@@ -59,7 +59,7 @@ func (a *App) Initialize(dbDriver, dsn string) {
 	var err error
 
 	a.DB, err = sql.Open(dbDriver, dsn)
-	a.DB.SetMaxOpenConns(900)
+	a.DB.SetMaxOpenConns(150)
 	a.DB.SetMaxIdleConns(100)
 	a.DB.SetConnMaxLifetime(time.Minute * 2)
 
