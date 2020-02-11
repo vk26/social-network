@@ -1,0 +1,1 @@
+docker-compose exec mysql_master sh -c "export MYSQL_PWD=password; mysql -u root"
