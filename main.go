@@ -20,9 +20,10 @@ import (
 )
 
 type App struct {
-	Router *mux.Router
-	DB     *sql.DB
-	Tmpl   *template.Template
+	Router  *mux.Router
+	DB      *sql.DB
+	DBSlave *sql.DB
+	Tmpl    *template.Template
 }
 
 var (
@@ -49,19 +50,25 @@ func main() {
 	a.Initialize(
 		"mysql",
 		os.Getenv("SOCIAL_APP_MYSQL_DSN"),
+		os.Getenv("SOCIAL_APP_MYSQL_DSN_SLAVE"),
 	)
 	port := os.Getenv("PORT")
 	fmt.Println("App is listening port ", port)
 	a.Run(":" + port)
 }
 
-func (a *App) Initialize(dbDriver, dsn string) {
+func (a *App) Initialize(dbDriver, dsn string, dsnSlave string) {
 	var err error
 
 	a.DB, err = sql.Open(dbDriver, dsn)
 	a.DB.SetMaxOpenConns(150)
 	a.DB.SetMaxIdleConns(100)
 	a.DB.SetConnMaxLifetime(time.Minute * 2)
+
+	a.DBSlave, err = sql.Open(dbDriver, dsnSlave)
+	a.DBSlave.SetMaxOpenConns(150)
+	a.DBSlave.SetMaxIdleConns(100)
+	a.DBSlave.SetConnMaxLifetime(time.Minute * 2)
 
 	if err != nil {
 		log.Fatal(err)
@@ -197,7 +204,7 @@ func (a *App) UsersList(w http.ResponseWriter, r *http.Request) {
 		count = 15
 	}
 	start := page * count
-	users, err := models.GetUsers(a.DB, count, start)
+	users, err := models.GetUsers(a.DBSlave, count, start)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -218,7 +225,7 @@ func (a *App) UsersSearch(w http.ResponseWriter, r *http.Request) {
 		count = 15
 	}
 	start := page * count
-	users, err := models.SearchUsers(a.DB, nameSubstr, count, start)
+	users, err := models.SearchUsers(a.DBSlave, nameSubstr, count, start)
 	if err != nil {
 		log.Println(err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)

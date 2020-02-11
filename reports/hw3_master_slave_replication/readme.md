@@ -127,3 +127,11 @@ Master_SSL_Verify_Server_Cert: No
 ```
 
 Got it!
+
+## Load testing
+### With using only master node mysql
+https://overload.yandex.net/250158
+
+### WIth using master and slave nodes
+We redirect read-requests(get list users, search users) to slave node. Write-requests will be redirect to master node as usual. But we use master node for geting user by ID, because to avoid case, when user update profile (write-request), and after read profile data from slave, but replication is not completed (replication lag).
+https://overload.yandex.net/250184
