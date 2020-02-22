@@ -69,7 +69,7 @@ mysql -uroot -p
 ```
 Setup replication:
 ```sql
-CHANGE MASTER TO MASTER_HOST='172.23.0.2', MASTER_USER='mysql_slave_user', MASTER_PASSWORD='password', MASTER_LOG_FILE='mysql-bin.000001', MASTER_LOG_POS=155;
+CHANGE MASTER TO MASTER_HOST='172.21.0.2', MASTER_USER='mysql_slave_user', MASTER_PASSWORD='password', MASTER_LOG_FILE='mysql-bin.000001', MASTER_LOG_POS=155;
 ```
 
 Start slave replication:
@@ -82,7 +82,7 @@ Check our slave status:
 mysql> SHOW SLAVE STATUS\G
 *************************** 1. row ***************************
                Slave_IO_State: Waiting for master to send event
-                  Master_Host: 172.23.0.2
+                  Master_Host: 172.21.0.2
                   Master_User: mysql_slave_user
                   Master_Port: 3306
                 Connect_Retry: 60
@@ -175,7 +175,7 @@ STOP SLAVE;
 
 Configure the slave to use GTID-based auto-positioning:
 ```sql
-CHANGE MASTER TO MASTER_HOST='172.23.0.2', MASTER_USER='mysql_slave_user', MASTER_PASSWORD='password', MASTER_AUTO_POSITION=1;
+CHANGE MASTER TO MASTER_HOST='172.21.0.2', MASTER_USER='mysql_slave_user', MASTER_PASSWORD='password', MASTER_AUTO_POSITION=1;
 ```
 
 Check slave status:
@@ -184,7 +184,7 @@ START SLAVE;
 SHOW SLAVE STATUS\G
 *************************** 1. row ***************************
                Slave_IO_State: Waiting for master to send event
-                  Master_Host: 172.23.0.2
+                  Master_Host: 172.21.0.2
                   Master_User: mysql_slave_user
                   Master_Port: 3306
                 Connect_Retry: 60
@@ -245,3 +245,67 @@ Master_SSL_Verify_Server_Cert: No
             Network_Namespace: 
 1 row in set (0.00 sec)
 ```
+
+## Setup semisync replication mode
+
+We need setup plugin for semi-sync replication and turn on semi-sync replication in both sides(master and all slaves). Add to master my.cnf file:
+```
+[mysqld]
+plugin-load=rpl_semi_sync_master=semisync_master.so
+rpl_semi_sync_master_enabled=1
+rpl_semi_sync_master_timeout=10000
+```
+And for slaves:
+```
+[mysqld]
+plugin-load=rpl_semi_sync_slave=semisync_slave.so
+rpl_semi_sync_slave_enabled=1
+```
+After restart mysql check installed variables and status of semi-sync replication. For example in master:
+```
+mysql> SHOW VARIABLES LIKE 'rpl_semi_sync%';
++-------------------------------------------+------------+
+| Variable_name                             | Value      |
++-------------------------------------------+------------+
+| rpl_semi_sync_master_enabled              | ON         |
+| rpl_semi_sync_master_timeout              | 10000      |
+| rpl_semi_sync_master_trace_level          | 32         |
+| rpl_semi_sync_master_wait_for_slave_count | 1          |
+| rpl_semi_sync_master_wait_no_slave        | ON         |
+| rpl_semi_sync_master_wait_point           | AFTER_SYNC |
++-------------------------------------------+------------+
+6 rows in set (0.00 sec)
+
+mysql> SHOW STATUS LIKE 'Rpl_semi_sync%';
++--------------------------------------------+-------+
+| Variable_name                              | Value |
++--------------------------------------------+-------+
+| Rpl_semi_sync_master_clients               | 2     |
+| Rpl_semi_sync_master_net_avg_wait_time     | 0     |
+| Rpl_semi_sync_master_net_wait_time         | 0     |
+| Rpl_semi_sync_master_net_waits             | 6     |
+| Rpl_semi_sync_master_no_times              | 1     |
+| Rpl_semi_sync_master_no_tx                 | 27    |
+| Rpl_semi_sync_master_status                | ON    |
+| Rpl_semi_sync_master_timefunc_failures     | 0     |
+| Rpl_semi_sync_master_tx_avg_wait_time      | 10755 |
+| Rpl_semi_sync_master_tx_wait_time          | 32266 |
+| Rpl_semi_sync_master_tx_waits              | 3     |
+| Rpl_semi_sync_master_wait_pos_backtraverse | 0     |
+| Rpl_semi_sync_master_wait_sessions         | 0     |
+| Rpl_semi_sync_master_yes_tx                | 3     |
++--------------------------------------------+-------+
+```
+
+And show slave semi-sync status:
+```
+mysql> SHOW STATUS LIKE 'Rpl_semi_sync%';
++----------------------------+-------+
+| Variable_name              | Value |
++----------------------------+-------+
+| Rpl_semi_sync_slave_status | ON    |
++----------------------------+-------+
+```
+
+
+
