@@ -15,3 +15,8 @@ Write searching users with `sql LIKE %` condition. Select an efficient index, in
 Setup replication master/slave. Redirect some requests to slave-node. Do load testing before and after separation requests by master/slave.
 
 [Report](/reports/hw3_master_slave_replication/readme.md)
+
+## HW4 Promote slave to master
+Add new slave2. Setup ROW-based replication. Turn on GTID. Config semi-sync replication. Start DB seed application with counting success insertions. Kill master. Promote slave1 to master. Switch replication slave2 from slave1(new master). Check that we didn't lose transactions.
+
+[Report](/reports/hw4_switch_master/readme.md)
