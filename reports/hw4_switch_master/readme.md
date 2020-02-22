@@ -1,4 +1,4 @@
-# Switch master to slave replica without loss of transactions
+# Promote slave to master without loss of transactions
 In this experiment we try to add one more slave, setup GTID, semi-sync replication, run db client for insertion data, stop force our master and promote one of slave to master. Check our success transactions in replication nodes.
 
 ## Add another slave-replica
