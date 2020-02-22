@@ -52,7 +52,7 @@ networks:
 ```
 
 Find out binlog file and position of replication in mysql master:
-```
+```sql
 mysql> show master status;
 +------------------+----------+--------------+------------------+-------------------+
 | File             | Position | Binlog_Do_DB | Binlog_Ignore_DB | Executed_Gtid_Set |
@@ -78,7 +78,7 @@ START SLAVE;
 ```
 
 Check our slave status:
-```
+```sql
 mysql> SHOW SLAVE STATUS\G
 *************************** 1. row ***************************
                Slave_IO_State: Waiting for master to send event
@@ -158,7 +158,7 @@ gtid_mode=ON
 enforce-gtid-consistency=ON
 ```
 Check master status:
-```
+```sql
 mysql> show master status;
 +------------------+----------+--------------+------------------+--------------------------------------------+
 | File             | Position | Binlog_Do_DB | Binlog_Ignore_DB | Executed_Gtid_Set                          |
@@ -179,7 +179,7 @@ CHANGE MASTER TO MASTER_HOST='172.22.0.2', MASTER_USER='mysql_slave_user', MASTE
 ```
 
 Check slave status:
-```
+```sql
 START SLAVE;
 SHOW SLAVE STATUS\G
 *************************** 1. row ***************************
@@ -262,7 +262,7 @@ plugin-load=rpl_semi_sync_slave=semisync_slave.so
 rpl_semi_sync_slave_enabled=1
 ```
 After restart mysql check installed variables and status of semi-sync replication. For example in master:
-```
+```sql
 mysql> SHOW VARIABLES LIKE 'rpl_semi_sync%';
 +-------------------------------------------+------------+
 | Variable_name                             | Value      |
@@ -298,7 +298,7 @@ mysql> SHOW STATUS LIKE 'Rpl_semi_sync%';
 ```
 
 And show slave semi-sync status:
-```
+```sql
 mysql> SHOW STATUS LIKE 'Rpl_semi_sync%';
 +----------------------------+-------+
 | Variable_name              | Value |
@@ -309,11 +309,12 @@ mysql> SHOW STATUS LIKE 'Rpl_semi_sync%';
 
 ## Run seed DB for creating records and kill mysql master process
 Code of our DB client for creating records:
-https://github.com/vk26/social-network/reports/hw4_switch_master/client.go
+
+https://github.com/vk26/social-network/blob/master/reports/hw4_switch_master/client.go
 This application performs insertions to DB and keeps count of success insertions.
 
 First of all find out count of users at start our experiment:
-```
+```sql
 mysql> select count(*) from users; 
 +----------+
 | count(*) |
@@ -327,7 +328,7 @@ go run reports/hw4_switch_master/client.go
 ```
 
 Kill mysql master:
-```
+```sql
 docker kill mysql_master
 ```
 Then stop our seed-client and see count of success insert records:
@@ -338,7 +339,7 @@ Then stop our seed-client and see count of success insert records:
 ## Promote slave to master
 We have slave1 and slave2. Master is down now. Let's promote slave2 to master and after switch slave1 to replicate from slave2(new master).
 In slave2:
-```
+```sql
 STOP SLAVE;
 RESET MASTER;
 ```
@@ -359,7 +360,7 @@ rpl_semi_sync_master_timeout=10000
 binlog_format = ROW
 ```
 We turn on semi-sync master, and set ROW format. Restart slave2 and show master status:
-```
+```sql
 mysql> SHOW MASTER STATUS;
 +------------------+----------+--------------+------------------+------------------------------------------+
 | File             | Position | Binlog_Do_DB | Binlog_Ignore_DB | Executed_Gtid_Set                        |
@@ -383,7 +384,7 @@ SET GLOBAL GTID_PURGED="13f849c8-4b34-11ea-9a5e-0242c0a84003:1-3"
 START SLAVE IO_THREAD;
 ```
 And show slave status:
-```
+```sql
 mysql> SHOW SLAVE STATUS\G
 *************************** 1. row ***************************
                Slave_IO_State: Waiting for master to send event
